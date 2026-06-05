@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Nexus Debugger</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/acornjs/8.11.3/acorn.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0f;--sur:#111118;--sur2:#16161f;--br:rgba(255,255,255,0.07);
+  --tx:#f0f0f5;--tx2:#888899;--ac:#7c3aed;--acl:rgba(124,58,237,0.12);
+  --red:#ef4444;--redl:rgba(239,68,68,0.1);
+  --yellow:#f59e0b;--yel:rgba(245,158,11,0.1);
+  --green:#22c55e;--grl:rgba(34,197,94,0.1);
+  --blue:#38bdf8;--bll:rgba(56,189,248,0.1);
+  --orange:#f97316;--orl:rgba(249,115,22,0.1);
+  --purple:#a855f7;
+  --mono:'JetBrains Mono',monospace;--font:'Syne',sans-serif;
+  --hh:54px;--th:46px;
+}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);overflow:hidden}
+
+/* ── HEADER ── */
+#hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);background:var(--sur);border-bottom:1px solid var(--br);display:flex;align-items:center;padding:0 10px;gap:6px;z-index:200}
+.logo{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;flex-shrink:0}
+.logo-ic{width:26px;height:26px;background:linear-gradient(135deg,#7c3aed,#2563eb);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.logo-tx{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.hdr-stats{display:flex;gap:4px;align-items:center;margin-left:auto}
+.sb{padding:3px 6px;border-radius:5px;font-size:10px;font-weight:800;font-family:var(--mono);white-space:nowrap}
+.sb-e{background:var(--redl);color:var(--red)}
+.sb-w{background:var(--yel);color:var(--yellow)}
+.sb-ok{background:var(--grl);color:var(--green);display:none}
+.sc-badge{padding:3px 7px;border-radius:5px;font-size:10px;font-weight:800;font-family:var(--mono);display:none}
+.hbtn{width:30px;height:30px;border-radius:8px;background:var(--sur2);border:1px solid var(--br);color:var(--tx2);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;transition:all 0.15s;text-decoration:none}
+.hbtn:active{background:var(--acl);color:var(--ac);transform:scale(0.9)}
+.hbtn.ai-on{background:var(--acl);color:var(--ac);border-color:var(--ac)}
+
+/* ── MAIN ── */
+#main{position:fixed;top:var(--hh);left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── TABS ── */
+#tabs{display:flex;background:var(--sur);border-bottom:1px solid var(--br);flex-shrink:0;height:var(--th)}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;position:relative;padding:0 2px}
+.tab.act{color:var(--ac);border-bottom-color:var(--ac)}
+.tbadge{background:var(--red);color:white;font-size:9px;font-weight:800;border-radius:8px;padding:1px 4px;font-family:var(--mono);display:none}
+.tbadge.on{display:inline-block}
+
+/* PAGES */
+.page{display:none;flex:1;flex-direction:column;overflow:hidden}
+.page.act{display:flex}
+
+/* ── FILES PAGE ── */
+#files-page{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;gap:10px}
+.card{background:var(--sur);border:1px solid var(--br);border-radius:13px;overflow:hidden;flex-shrink:0}
+.card-hdr{display:flex;align-items:center;gap:7px;padding:10px 13px;border-bottom:1px solid var(--br);font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px}
+.up-row{display:flex;align-items:center;gap:11px;padding:13px;cursor:pointer;position:relative;transition:background 0.15s}
+.up-row:active{background:var(--acl)}
+.up-row+.up-row{border-top:1px solid var(--br)}
+.up-row input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.up-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.uic1{background:var(--acl)}.uic2{background:var(--grl)}.uic3{background:var(--bll)}
+.up-info{flex:1;min-width:0}
+.up-title{font-size:13px;font-weight:700;margin-bottom:1px}
+.up-sub{font-size:11px;color:var(--tx2)}
+.up-arr{font-size:16px;color:var(--tx2);flex-shrink:0}
+#file-list{padding:5px}
+.fi{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:8px;cursor:pointer;transition:background 0.15s}
+.fi:active,.fi.act{background:var(--acl)}
+.fi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-js{background:#f7df1e}.dot-html{background:#e34c26}.dot-css{background:#264de4}.dot-python{background:#3572A5}.dot-json{background:#aaa}.dot-text{background:#666}
+.fi-name{flex:1;font-size:11px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fi-eb{background:var(--red);color:white;font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px;font-family:var(--mono)}
+.fi-wb{background:var(--yellow);color:#000;font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px;font-family:var(--mono)}
+.fi-del{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--tx2);cursor:pointer;flex-shrink:0}
+.fi-del:active{background:var(--redl);color:var(--red)}
+.no-files{display:flex;flex-direction:column;align-items:center;padding:20px;gap:5px;color:var(--tx2)}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
+.sg{background:var(--sur2);border-radius:9px;padding:9px 11px}
+.sg-lbl{font-size:9px;color:var(--tx2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.sg-val{font-size:17px;font-weight:800;font-family:var(--mono)}
+.sg-sub{font-size:9px;color:var(--tx2);margin-top:1px}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border-radius:11px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 0.2s;border:none;width:100%}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,#7c3aed,#2563eb);color:white}
+.btn-ghost{background:var(--sur2);color:var(--tx);border:1px solid var(--br)}
+.btn-fix{background:var(--grl);color:var(--green);border:1px solid rgba(34,197,94,0.25)}
+.btn-ai{background:var(--acl);color:var(--ac);border:1px solid rgba(124,58,237,0.3)}
+.btn-sm{padding:6px 11px;font-size:11px;border-radius:8px;width:auto}
+
+/* ── CODE PAGE ── */
+#code-page{overflow:hidden;position:relative}
+#code-toolbar{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--br);flex-shrink:0;background:var(--sur)}
+#code-chips{display:flex;gap:5px;flex:1;overflow-x:auto}
+#code-chips::-webkit-scrollbar{display:none}
+.chip{display:flex;align-items:center;gap:4px;padding:4px 9px;background:var(--sur2);border:1px solid var(--br);border-radius:6px;font-size:10px;font-family:var(--mono);cursor:pointer;white-space:nowrap;flex-shrink:0;color:var(--tx2);transition:all 0.15s}
+.chip.act{border-color:var(--ac);color:var(--ac);background:var(--acl)}
+.code-act-btn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--br);background:var(--sur2);color:var(--tx2);white-space:nowrap;flex-shrink:0;transition:all 0.15s;font-family:var(--font)}
+.code-act-btn:active{background:var(--acl);color:var(--ac)}
+.code-act-btn.edit-on{background:var(--acl);color:var(--ac);border-color:var(--ac)}
+
+/* EDITOR WRAPPER */
+#editor-wrap{flex:1;display:flex;overflow:hidden;position:relative}
+#line-nums{width:38px;background:#0d0d12;padding:10px 0;overflow:hidden;flex-shrink:0;font-family:var(--mono);font-size:11px;line-height:1.8;color:#444;text-align:right;padding-right:8px;user-select:none}
+#code-textarea{flex:1;background:#0d0d12;color:#c9d1d9;font-family:var(--mono);font-size:11.5px;line-height:1.8;padding:10px 10px;border:none;outline:none;resize:none;overflow-y:auto;overflow-x:auto;white-space:pre;-webkit-overflow-scrolling:touch;tab-size:2;spellcheck:false}
+#code-textarea:read-only{cursor:default}
+#code-readonly{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;background:#0d0d12}
+#code-view{font-family:var(--mono);font-size:11.5px;line-height:1.8;padding:10px 0;min-width:max-content}
+.cl{display:flex;min-width:100%}
+.cl-n{width:38px;color:#444;flex-shrink:0;text-align:right;padding-right:8px;user-select:none;font-size:10px;line-height:1.8}
+.cl-t{flex:1;padding-right:14px;color:#c9d1d9;white-space:pre}
+.cl-e{background:rgba(239,68,68,0.09);border-left:2px solid var(--red)}
+.cl-w{background:rgba(245,158,11,0.07);border-left:2px solid var(--yellow)}
+.cl-fb{background:rgba(168,85,247,0.07);border-left:2px solid var(--purple)}
+
+/* AI SUGGESTION PANEL (inline) */
+#ai-suggest{display:none;position:absolute;bottom:0;left:0;right:0;background:var(--sur);border-top:1px solid var(--br);z-index:10;max-height:50%;flex-direction:column}
+#ai-suggest.show{display:flex}
+.as-hdr{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--br);flex-shrink:0}
+.as-title{font-size:12px;font-weight:800;flex:1}
+.as-close{width:24px;height:24px;border-radius:50%;background:var(--sur2);border:none;color:var(--tx2);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.as-body{flex:1;overflow-y:auto;padding:10px 12px}
+.as-msg{font-size:12px;line-height:1.6;color:var(--tx)}
+.as-fix-block{background:#0d1117;border:1px solid var(--br);border-radius:8px;padding:10px 12px;margin:8px 0;font-family:var(--mono);font-size:11px;color:#7ee787;line-height:1.6;overflow-x:auto;position:relative}
+.as-apply{position:absolute;top:6px;right:6px;background:var(--green);color:#000;font-size:10px;font-weight:800;border-radius:5px;padding:2px 8px;cursor:pointer;border:none;font-family:var(--font)}
+.as-apply:active{opacity:0.8}
+
+/* ── AI PAGE ── */
+#ai-page{overflow:hidden;flex-direction:column}
+#ai-chat-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px}
+#ai-chat-area::-webkit-scrollbar{width:3px}
+.ai-msg{margin-bottom:10px;animation:fadeUp 0.2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ai-msg.user{display:flex;justify-content:flex-end}
+.ai-msg.ai{display:flex;justify-content:flex-start}
+.ai-bubble{max-width:85%;padding:10px 13px;border-radius:16px;font-size:12px;line-height:1.6}
+.ai-msg.user .ai-bubble{background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;border-radius:16px 16px 4px 16px}
+.ai-msg.ai .ai-bubble{background:var(--sur2);color:var(--tx);border:1px solid var(--br);border-radius:16px 16px 16px 4px}
+.ai-bubble pre{background:#0d1117;border-radius:7px;padding:8px;margin:6px 0;font-size:10.5px;overflow-x:auto;border:1px solid var(--br)}
+.ai-bubble code{font-family:var(--mono);font-size:10.5px;color:#7ee787}
+.ai-bubble p{margin-bottom:6px}
+.ai-bubble p:last-child{margin-bottom:0}
+.ai-bubble strong{font-weight:700;color:var(--ac)}
+.ai-thinking{display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--sur2);border:1px solid var(--br);border-radius:16px;max-width:85%}
+.ai-thinking-dots{display:flex;gap:4px}
+.ai-thinking-dots span{width:6px;height:6px;background:var(--ac);border-radius:50%;animation:dot 1.2s infinite}
+.ai-thinking-dots span:nth-child(2){animation-delay:0.2s}
+.ai-thinking-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes dot{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.1)}}
+.fix-suggestion{background:#0d1117;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:10px;margin:8px 0}
+.fix-suggestion .fix-lbl{font-size:10px;color:var(--green);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.fix-suggestion pre{background:transparent;border:none;padding:0;margin:0;font-size:10.5px;color:#7ee787}
+.apply-fix-btn{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;padding:7px 12px;background:var(--green);color:#000;border:none;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;width:100%;font-family:var(--font)}
+.apply-fix-btn:active{opacity:0.8;transform:scale(0.97)}
+
+#ai-input-area{padding:8px 10px;border-top:1px solid var(--br);background:var(--sur);flex-shrink:0}
+#ai-quick-btns{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:2px}
+#ai-quick-btns::-webkit-scrollbar{display:none}
+.qbtn{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--br);background:var(--sur2);color:var(--tx2);white-space:nowrap;flex-shrink:0;font-family:var(--font);transition:all 0.15s}
+.qbtn:active{background:var(--acl);color:var(--ac);border-color:var(--ac)}
+#ai-input-row{display:flex;gap:7px;align-items:flex-end}
+#ai-input{flex:1;background:var(--sur2);border:1px solid var(--br);border-radius:11px;color:var(--tx);font-size:12px;font-family:var(--font);padding:9px 13px;resize:none;outline:none;max-height:100px;min-height:36px;line-height:1.5}
+#ai-input:focus{border-color:var(--ac)}
+#ai-send{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:white;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#ai-send:active{opacity:0.8;transform:scale(0.93)}
+#ai-send:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ── CONSOLE PAGE ── */
+#console-page{overflow:hidden}
+#con-filter-wrap{display:flex;gap:5px;padding:7px 9px;border-bottom:1px solid var(--br);overflow-x:auto;flex-shrink:0}
+#con-filter-wrap::-webkit-scrollbar{display:none}
+.fb{padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--br);font-family:var(--font);background:var(--sur2);color:var(--tx2);white-space:nowrap;flex-shrink:0;transition:all 0.15s}
+.fb.act-all{color:var(--tx);border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06)}
+.fb.act-err{color:var(--red);background:var(--redl);border-color:var(--red)}
+.fb.act-warn{color:var(--yellow);background:var(--yel);border-color:var(--yellow)}
+.fb.act-firebase{color:var(--purple);background:rgba(168,85,247,0.1);border-color:var(--purple)}
+.fb.act-info{color:var(--blue);background:var(--bll);border-color:var(--blue)}
+.fb.act-ok{color:var(--green);background:var(--grl);border-color:var(--green)}
+#con-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#con-list::-webkit-scrollbar{width:3px}
+.ci{display:flex;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:background 0.15s;animation:fadeUp 0.18s ease both}
+.ci:active{background:var(--sur2)}
+.ci-bar{width:3px;flex-shrink:0}
+.ci-bar.err{background:var(--red)}.ci-bar.warn{background:var(--yellow)}.ci-bar.info{background:var(--blue)}.ci-bar.ok{background:var(--green)}.ci-bar.firebase{background:var(--purple)}
+.ci-body{flex:1;padding:8px 11px;min-width:0}
+.ci-top{display:flex;align-items:flex-start;gap:6px;margin-bottom:2px}
+.ci-icon{font-size:11px;flex-shrink:0;margin-top:2px}
+.ci-msg{font-size:11.5px;font-weight:700;color:var(--tx);flex:1;line-height:1.4;min-width:0}
+.ci-loc{font-size:9px;font-family:var(--mono);color:var(--tx2);background:var(--sur2);padding:2px 5px;border-radius:3px;flex-shrink:0;white-space:nowrap}
+.ci-detail{font-size:11px;color:var(--tx2);line-height:1.5;margin-top:2px}
+.ci-fix{font-size:10px;color:var(--green);margin-top:3px;font-family:var(--mono);line-height:1.4}
+.ci-ai-btn{margin-top:5px;padding:4px 9px;background:var(--acl);color:var(--ac);border:1px solid rgba(124,58,237,0.3);border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font);display:inline-block}
+.ci-ai-btn:active{opacity:0.7}
+.con-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:7px;color:var(--tx2)}
+.ce-icon{font-size:34px;opacity:0.3}
+
+/* ── AI SETTINGS MODAL ── */
+#ai-settings-modal{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.65);align-items:flex-end;backdrop-filter:blur(4px)}
+#ai-settings-modal.on{display:flex}
+#ai-settings-box{background:var(--sur);width:100%;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column}
+.modal-hdr{display:flex;align-items:center;padding:14px 15px;border-bottom:1px solid var(--br);flex-shrink:0}
+.modal-title{font-size:14px;font-weight:800;flex:1}
+.modal-close{width:26px;height:26px;border-radius:50%;background:var(--sur2);border:none;color:var(--tx2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{flex:1;overflow-y:auto;padding:14px}
+.cfg-label{font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;margin-top:12px;display:block}
+.cfg-label:first-child{margin-top:0}
+.cfg-input{width:100%;background:var(--sur2);border:1px solid var(--br);border-radius:9px;color:var(--tx);font-size:12px;font-family:var(--font);padding:9px 12px;outline:none;margin-bottom:4px}
+.cfg-input:focus{border-color:var(--ac)}
+.cfg-select{width:100%;background:var(--sur2);border:1px solid var(--br);border-radius:9px;color:var(--tx);font-size:12px;font-family:var(--font);padding:9px 12px;outline:none;appearance:none;cursor:pointer}
+.cfg-hint{font-size:11px;color:var(--tx2);margin-top:3px;line-height:1.5}
+.provider-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.prov-chip{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--br);background:var(--sur2);color:var(--tx2);transition:all 0.15s;font-family:var(--font)}
+.prov-chip.act{border-color:var(--ac);color:var(--ac);background:var(--acl)}
+.modal-footer{padding:12px 14px;border-top:1px solid var(--br);flex-shrink:0}
+
+/* AUTO-FIX MODAL */
+#fix-modal{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);align-items:flex-end;backdrop-filter:blur(4px)}
+#fix-modal.on{display:flex}
+#fix-box{background:var(--sur);width:100%;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;max-height:80vh;display:flex;flex-direction:column}
+.fix-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;background:var(--sur2);margin-bottom:5px}
+.fix-item-info{flex:1;min-width:0}
+.fix-item-title{font-size:12px;font-weight:700}
+.fix-item-sub{font-size:10px;color:var(--tx2);margin-top:1px}
+.fix-count{font-size:11px;font-weight:800;font-family:var(--mono);color:var(--green);flex-shrink:0}
+
+/* PROGRESS */
+#prog-wrap{display:none;padding:6px 11px;border-bottom:1px solid var(--br);flex-shrink:0;background:var(--sur)}
+#prog-wrap.show{display:block}
+.prog-lbl{font-size:10px;color:var(--tx2);font-family:var(--mono);margin-bottom:4px}
+.prog-track{height:2px;background:var(--br);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#2563eb);width:0;transition:width 0.2s;border-radius:2px}
+
+/* DRAG OVERLAY */
+#drag-ov{display:none;position:fixed;inset:0;z-index:999;background:rgba(124,58,237,0.16);align-items:center;justify-content:center;flex-direction:column;gap:9px;backdrop-filter:blur(6px);border:3px dashed var(--ac)}
+#drag-ov.on{display:flex}
+
+/* TOAST */
+#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#1e1e2e;color:#fff;padding:8px 16px;border-radius:18px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity 0.25s;pointer-events:none;border:1px solid rgba(255,255,255,0.1);white-space:nowrap;max-width:90vw;text-align:center}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-ic">🐛</div>
+    <div class="logo-tx">Nexus Debugger</div>
+  </div>
+  <div class="hdr-stats">
+    <div class="sb sb-e" id="sb-e" style="display:none">0E</div>
+    <div class="sb sb-w" id="sb-w" style="display:none">0W</div>
+    <div class="sc-badge" id="sc-badge">A+</div>
+    <div class="sb sb-ok" id="sb-ok">✅ Clean</div>
+  </div>
+  <button class="hbtn" id="ai-toggle-btn" onclick="toggleAIPanel()" title="AI Assistant">🤖</button>
+  <button class="hbtn" onclick="openAISettings()" title="AI Settings">⚙️</button>
+  <button class="hbtn" onclick="openFixModal()" title="Auto-Fix">🔧</button>
+  <button class="hbtn" onclick="triggerScan()" title="Scan">⚡</button>
+  <button class="hbtn" onclick="clearAll()" title="Clear">🗑️</button>
+</header>
+
+<div id="main">
+  <div id="tabs">
+    <div class="tab act" id="tab-files" onclick="showTab('files')">📂 Files</div>
+    <div class="tab" id="tab-code" onclick="showTab('code')">💻 Code</div>
+    <div class="tab" id="tab-ai" onclick="showTab('ai')">🤖 AI<span class="tbadge" id="ai-badge">!</span></div>
+    <div class="tab" id="tab-console" onclick="showTab('console')">🔴 Issues<span class="tbadge" id="tc-badge">0</span></div>
+  </div>
+
+  <!-- FILES PAGE -->
+  <div class="page act" id="files-page">
+    <div class="card">
+      <div class="card-hdr">📥 Upload</div>
+      <div class="up-row">
+        <input type="file" multiple accept=".js,.jsx,.ts,.tsx,.html,.htm,.css,.py,.json,.txt,.vue,.svelte" onchange="handleFiles(event)">
+        <div class="up-ic uic1">📄</div>
+        <div class="up-info"><div class="up-title">Select File(s)</div><div class="up-sub">JS, HTML, CSS, Python, JSON, TS...</div></div>
+        <div class="up-arr">›</div>
+      </div>
+      <div class="up-row">
+        <input type="file" webkitdirectory multiple onchange="handleFiles(event)">
+        <div class="up-ic uic2">📁</div>
+        <div class="up-info"><div class="up-title">Select Folder</div><div class="up-sub">Scan entire project at once</div></div>
+        <div class="up-arr">›</div>
+      </div>
+    </div>
+    <div class="card" id="score-card" style="display:none">
+      <div class="card-hdr">📊 Health Score <span id="score-letter" style="margin-left:auto;font-size:16px;font-weight:800;font-family:var(--mono)">—</span></div>
+      <div class="score-grid" id="score-grid"></div>
+    </div>
+    <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:150px">
+      <div class="card-hdr">
+        📄 Files
+        <span id="file-count" style="background:var(--acl);color:var(--ac);padding:1px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-left:5px">0</span>
+        <button class="btn btn-primary btn-sm" onclick="triggerScan()" style="margin-left:auto">⚡ Scan</button>
+      </div>
+      <div id="file-list" style="flex:1;overflow-y:auto;padding:5px"><div class="no-files"><div style="font-size:26px;opacity:0.3">📂</div><div style="font-size:12px">No files loaded</div></div></div>
+    </div>
+    <div style="display:flex;gap:7px;flex-shrink:0">
+      <button class="btn btn-ai" onclick="showTab('ai')">🤖 Ask AI</button>
+      <button class="btn btn-fix" onclick="openFixModal()">🔧 Auto-Fix</button>
+    </div>
+    <div style="text-align:center;padding:7px;font-size:11px;color:var(--tx2);flex-shrink:0">💡 Drag & drop files anywhere</div>
+  </div>
+
+  <!-- CODE PAGE -->
+  <div class="page" id="code-page">
+    <div id="prog-wrap"><div class="prog-lbl" id="prog-lbl">Scanning...</div><div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div></div>
+    <div id="code-toolbar">
+      <div id="code-chips"></div>
+      <button class="code-act-btn" id="edit-btn" onclick="toggleEditMode()">✏️ Edit</button>
+      <button class="code-act-btn" onclick="copyActiveCode()">📋</button>
+    </div>
+    <div id="editor-wrap">
+      <!-- Read-only view -->
+      <div id="code-readonly" style="display:flex;flex:1;overflow:auto">
+        <div id="code-view">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:8px;color:var(--tx2)">
+            <div style="font-size:30px;opacity:0.3">💻</div>
+            <div style="font-size:13px;font-weight:700">No file open</div>
+            <div style="font-size:11px">Upload and select a file</div>
+          </div>
+        </div>
+      </div>
+      <!-- Edit mode -->
+      <div id="line-nums" style="display:none"></div>
+      <textarea id="code-textarea" style="display:none" spellcheck="false" autocorrect="off" autocapitalize="off" oninput="onEditorInput()" onscroll="syncScroll()"></textarea>
+    </div>
+    <!-- AI Suggestion Panel -->
+    <div id="ai-suggest">
+      <div class="as-hdr">
+        <span style="font-size:14px">🤖</span>
+        <div class="as-title" id="as-title">AI Suggestion</div>
+        <button class="as-close" onclick="closeAISuggest()">✕</button>
+      </div>
+      <div class="as-body" id="as-body"></div>
+    </div>
+  </div>
+
+  <!-- AI PAGE -->
+  <div class="page" id="ai-page">
+    <div id="ai-chat-area">
+      <div style="text-align:center;padding:20px;color:var(--tx2)">
+        <div style="font-size:32px;margin-bottom:8px">🤖</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">Nexus AI Assistant</div>
+        <div style="font-size:11px;line-height:1.6">I have full access to your code and all detected issues.<br>Ask me anything — I'll fix bugs surgically!</div>
+        <div id="ai-no-key-warn" style="margin-top:12px;padding:10px;background:var(--redl);border:1px solid rgba(239,68,68,0.2);border-radius:9px;font-size:11px;color:var(--red);display:none">
+          ⚠️ API key not set! Tap ⚙️ in header to configure AI.
+        </div>
+      </div>
+    </div>
+    <div id="ai-input-area">
+      <div id="ai-quick-btns">
+        <button class="qbtn" onclick="quickAsk('Debug my code thoroughly 3 times and find ALL bugs, errors, logic mistakes')">🔍 Deep Debug</button>
+        <button class="qbtn" onclick="quickAsk('Fix all bugs you found — edit only the broken parts, do not rewrite everything')">🔧 Fix All Bugs</button>
+        <button class="qbtn" onclick="quickAsk('Review my code and give real-time suggestions to improve it')">💡 Suggestions</button>
+        <button class="qbtn" onclick="quickAsk('Check my Firebase code for security issues and common mistakes')">🟣 Firebase Check</button>
+        <button class="qbtn" onclick="quickAsk('What is the biggest bug in my code and how do I fix it?')">🐛 Biggest Bug</button>
+        <button class="qbtn" onclick="quickAsk('Explain all the errors found in my code in simple language')">📖 Explain Errors</button>
+      </div>
+      <div id="ai-input-row">
+        <textarea id="ai-input" placeholder="Ask about your code..." rows="1" onkeydown="aiInputKeydown(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+        <button id="ai-send" onclick="sendAIMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSOLE PAGE -->
+  <div class="page" id="console-page">
+    <div id="con-filter-wrap">
+      <button class="fb act-all" data-f="all" onclick="setFilter(this)">All</button>
+      <button class="fb" data-f="err" onclick="setFilter(this)">🔴 Errors</button>
+      <button class="fb" data-f="warn" onclick="setFilter(this)">🟡 Warns</button>
+      <button class="fb" data-f="firebase" onclick="setFilter(this)">🟣 Firebase</button>
+      <button class="fb" data-f="info" onclick="setFilter(this)">🔵 Info</button>
+      <button class="fb" data-f="ok" onclick="setFilter(this)">🟢 Passed</button>
+      <button class="fb" data-f="copy" onclick="copyReport()" style="margin-left:auto">📋</button>
+    </div>
+    <div id="con-list">
+      <div class="con-empty"><div class="ce-icon">🔍</div><div style="font-size:13px;font-weight:700">Upload & Scan</div><div style="font-size:11px">Real bugs — no AI needed</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- AI SETTINGS MODAL -->
+<div id="ai-settings-modal" onclick="if(event.target===this)closeAISettings()">
+  <div id="ai-settings-box">
+    <div class="modal-hdr">
+      <div class="modal-title">🤖 AI Configuration</div>
+      <button class="modal-close" onclick="closeAISettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <span class="cfg-label">Provider</span>
+      <div class="provider-row">
+        <div class="prov-chip act" onclick="selectProvider(this,'gemini')" data-provider="gemini">Gemini</div>
+        <div class="prov-chip" onclick="selectProvider(this,'openrouter')" data-provider="openrouter">OpenRouter</div>
+        <div class="prov-chip" onclick="selectProvider(this,'groq')" data-provider="groq">Groq</div>
+        <div class="prov-chip" onclick="selectProvider(this,'openai')" data-provider="openai">OpenAI</div>
+        <div class="prov-chip" onclick="selectProvider(this,'other')" data-provider="other">Custom</div>
+      </div>
+      <span class="cfg-label">API Key</span>
+      <input class="cfg-input" type="password" id="cfg-api-key" placeholder="Enter your API key...">
+      <span class="cfg-label">Model ID</span>
+      <input class="cfg-input" type="text" id="cfg-model-id" placeholder="e.g. gemini-2.0-flash, llama-3.3-70b...">
+      <div class="cfg-hint" id="model-hint">Gemini: gemini-2.0-flash-exp (free) | gemini-2.5-pro</div>
+      <div id="custom-base-url-wrap" style="display:none">
+        <span class="cfg-label">Base URL</span>
+        <input class="cfg-input" type="text" id="cfg-base-url" placeholder="https://your-api-endpoint.com/v1">
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--grl);border-radius:9px;font-size:11px;color:var(--green);line-height:1.5">
+        💡 Free options: Gemini Flash (aistudio.google.com), DeepSeek on OpenRouter, Llama on Groq
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="saveAISettings()">✅ Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTO-FIX MODAL -->
+<div id="fix-modal" onclick="if(event.target===this)closeFixModal()">
+  <div id="fix-box">
+    <div class="modal-hdr">
+      <div class="modal-title">🔧 Auto-Fix Available</div>
+      <button class="modal-close" onclick="closeFixModal()">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:10px" id="fix-list"></div>
+    <div style="padding:10px;border-top:1px solid var(--br);flex-shrink:0">
+      <button class="btn btn-fix" onclick="applyAllFixes()">⚡ Apply All Fixes & Re-Scan</button>
+    </div>
+  </div>
+</div>
+
+<div id="drag-ov">
+  <div style="font-size:48px">📂</div>
+  <div style="font-size:16px;font-weight:800;color:var(--ac)">Drop to Analyze</div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  NEXUS DEBUGGER v3 — AI + CODE EDITOR + FULL ANALYSIS
+// ═══════════════════════════════════════════════════════
+
+const ST = {
+  files: {},
+  active: null,
+  allIssues: [],
+  filter: 'all',
+  editMode: false,
+  aiCfg: { provider:'gemini', apiKey:'', modelId:'gemini-2.0-flash-exp', baseUrl:'' },
+  aiHistory: [],
+  aiThinking: false
+};
+
+// Load saved AI config
+(function loadCfg(){
+  try { const s=localStorage.getItem('nxd_cfg'); if(s) ST.aiCfg={...ST.aiCfg,...JSON.parse(s)}; } catch(e){}
+})();
+
+// ── DRAG DROP ──
+let dragCnt=0;
+document.addEventListener('dragenter',e=>{e.preventDefault();dragCnt++;document.getElementById('drag-ov').classList.add('on');});
+document.addEventListener('dragleave',e=>{dragCnt--;if(dragCnt<=0){dragCnt=0;document.getElementById('drag-ov').classList.remove('on');}});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{e.preventDefault();dragCnt=0;document.getElementById('drag-ov').classList.remove('on');processFileList(e.dataTransfer.files);});
+
+// ── FILE HANDLING ──
+function handleFiles(e){processFileList(e.target.files);e.target.value='';}
+
+function processFileList(fl){
+  const arr=Array.from(fl).filter(f=>{
+    const ext=(f.name.split('.').pop()||'').toLowerCase();
+    return ['js','jsx','ts','tsx','html','htm','css','py','json','txt','vue','svelte'].includes(ext)&&f.size<2*1024*1024;
+  });
+  if(!arr.length){showToast('No supported files found');return;}
+  let done=0;
+  arr.forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      const lang=detectLang(f.name);
+      ST.files[f.name]={code:ev.target.result,lang,issues:[],originalCode:ev.target.result};
+      if(!ST.active)ST.active=f.name;
+      done++;
+      if(done===arr.length){
+        renderFileList();renderCodeChips();
+        if(ST.active)renderCode(ST.active);
+        showToast(`${arr.length} file${arr.length>1?'s':''} loaded ✓`);
+        arr.forEach(ff=>scheduleAnalysis(ff.name));
+        updateAIKeyWarning();
+      }
+    };
+    r.onerror=()=>done++;
+    r.readAsText(f);
+  });
+}
+
+function detectLang(n){
+  const e=(n.split('.').pop()||'').toLowerCase();
+  const m={js:'js',jsx:'js',ts:'js',tsx:'js',vue:'js',svelte:'js',html:'html',htm:'html',css:'css',py:'python',json:'json'};
+  return m[e]||'text';
+}
+function getDot(lang){const m={js:'dot-js',html:'dot-html',css:'dot-css',python:'dot-python',json:'dot-json'};return m[lang]||'dot-text';}
+
+// ── FILE LIST ──
+function renderFileList(){
+  const el=document.getElementById('file-list');
+  const keys=Object.keys(ST.files);
+  document.getElementById('file-count').textContent=keys.length;
+  if(!keys.length){el.innerHTML='<div class="no-files"><div style="font-size:26px;opacity:0.3">📂</div><div style="font-size:12px">No files loaded</div></div>';return;}
+  el.innerHTML=keys.map(n=>{
+    const f=ST.files[n];
+    const e=(f.issues||[]).filter(i=>i.sev==='err').length;
+    const w=(f.issues||[]).filter(i=>i.sev==='warn').length;
+    const fb=(f.issues||[]).filter(i=>i.sev==='firebase').length;
+    const clean=f.issues.length&&!e&&!w&&!fb;
+    return `<div class="fi ${n===ST.active?'act':''}" onclick="openFile(${JSON.stringify(n)})">
+      <div class="fi-dot ${getDot(f.lang)}"></div>
+      <div class="fi-name" title="${n}">${n.split('/').pop()}</div>
+      <div style="display:flex;gap:3px;flex-shrink:0">
+        ${e?`<span class="fi-eb">${e}E</span>`:''}
+        ${w&&!e?`<span class="fi-wb">${w}W</span>`:''}
+        ${fb?`<span style="background:rgba(168,85,247,0.15);color:var(--purple);font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px;font-family:var(--mono)">${fb}FB</span>`:''}
+        ${clean?`<span style="background:var(--grl);color:var(--green);font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px">✓</span>`:''}
+      </div>
+      <div class="fi-del" onclick="event.stopPropagation();removeFile(${JSON.stringify(n)})">✕</div>
+    </div>`;
+  }).join('');
+}
+
+function openFile(n){ST.active=n;renderFileList();renderCodeChips();renderCode(n);showTab('code');}
+function removeFile(n){
+  delete ST.files[n];
+  if(ST.active===n){const k=Object.keys(ST.files);ST.active=k.length?k[0]:null;}
+  rebuildAllIssues();renderFileList();renderCodeChips();
+  if(ST.active)renderCode(ST.active);
+  else document.getElementById('code-view').innerHTML='';
+}
+
+// ── CODE VIEWER + EDITOR ──
+function renderCodeChips(){
+  document.getElementById('code-chips').innerHTML=Object.keys(ST.files).map(n=>{
+    const f=ST.files[n];
+    const e=(f.issues||[]).filter(i=>i.sev==='err').length;
+    return `<div class="chip ${n===ST.active?'act':''}" onclick="openFile(${JSON.stringify(n)})">${n.split('/').pop()}${e?`<span style="background:var(--red);color:white;border-radius:3px;padding:0 3px;font-size:9px">${e}</span>`:''}</div>`;
+  }).join('');
+}
+
+// ── PERFORMANCE: Chunked code renderer ──
+const MAX_LINES_FAST = 300; // render all at once if under this
+function renderCode(name){
+  const f=ST.files[name];
+  if(!f){return;}
+  if(ST.editMode){showEditMode(name);return;}
+  const lines=f.code.split('\n');
+  const eL=new Set((f.issues||[]).filter(i=>i.sev==='err'&&i.line).map(i=>i.line));
+  const wL=new Set((f.issues||[]).filter(i=>i.sev==='warn'&&i.line).map(i=>i.line));
+  const fbL=new Set((f.issues||[]).filter(i=>i.sev==='firebase'&&i.line).map(i=>i.line));
+
+  function buildLines(from, to){
+    let html='';
+    for(let i=from;i<to&&i<lines.length;i++){
+      const ln=i+1;
+      const cls=eL.has(ln)?'cl-e':fbL.has(ln)?'cl-fb':wL.has(ln)?'cl-w':'';
+      const safe=(lines[i]||' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html+=`<div class="cl ${cls}"><span class="cl-n">${ln}</span><span class="cl-t">${safe}</span></div>`;
+    }
+    return html;
+  }
+
+  const cv=document.getElementById('code-view');
+  if(lines.length<=MAX_LINES_FAST){
+    // Small file — render all at once
+    cv.innerHTML=buildLines(0,lines.length);
+  } else {
+    // Large file — render first 300 instantly, rest in chunks
+    cv.innerHTML=buildLines(0,MAX_LINES_FAST);
+    let chunk=MAX_LINES_FAST;
+    function renderNextChunk(){
+      if(chunk>=lines.length)return;
+      const end=Math.min(chunk+200,lines.length);
+      cv.innerHTML+=buildLines(chunk,end);
+      chunk=end;
+      if(chunk<lines.length) requestAnimationFrame(renderNextChunk);
+    }
+    requestAnimationFrame(renderNextChunk);
+  }
+}
+
+let editTimer=null;
+function toggleEditMode(){
+  ST.editMode=!ST.editMode;
+  const btn=document.getElementById('edit-btn');
+  btn.textContent=ST.editMode?'👁️ View':'✏️ Edit';
+  btn.classList.toggle('edit-on',ST.editMode);
+  if(ST.active){
+    if(ST.editMode) showEditMode(ST.active);
+    else showReadMode(ST.active);
+  }
+}
+
+function showEditMode(name){
+  const f=ST.files[name];
+  if(!f)return;
+  document.getElementById('code-readonly').style.display='none';
+  document.getElementById('line-nums').style.display='block';
+  const ta=document.getElementById('code-textarea');
+  ta.style.display='block';
+  ta.value=f.code;
+  updateLineNums(f.code);
+}
+
+function showReadMode(name){
+  document.getElementById('code-readonly').style.display='flex';
+  document.getElementById('line-nums').style.display='none';
+  document.getElementById('code-textarea').style.display='none';
+  renderCode(name);
+}
+
+function updateLineNums(code){
+  const count=code.split('\n').length;
+  // Use simple string repeat for performance
+  let html='';
+  for(let i=1;i<=count;i++) html+=`<div>${i}</div>`;
+  document.getElementById('line-nums').innerHTML=html;
+}
+
+function syncScroll(){
+  const ta=document.getElementById('code-textarea');
+  document.getElementById('line-nums').scrollTop=ta.scrollTop;
+}
+
+function onEditorInput(){
+  const ta=document.getElementById('code-textarea');
+  const name=ST.active;
+  if(!name||!ST.files[name])return;
+  ST.files[name].code=ta.value;
+  updateLineNums(ta.value);
+  // Debounced re-analysis
+  clearTimeout(editTimer);
+  editTimer=setTimeout(()=>{
+    analyzeFile(name).then(()=>{renderFileList();renderCodeChips();});
+  },1200);
+}
+
+function copyActiveCode(){
+  const name=ST.active;
+  if(!name||!ST.files[name]){showToast('No file open');return;}
+  navigator.clipboard?.writeText(ST.files[name].code)
+    .then(()=>showToast('Code copied! ✓'))
+    .catch(()=>{
+      // Fallback
+      const ta=document.createElement('textarea');
+      ta.value=ST.files[name].code;
+      document.body.appendChild(ta);ta.select();document.execCommand('copy');
+      document.body.removeChild(ta);showToast('Code copied! ✓');
+    });
+}
+
+// ── TABS ──
+function showTab(id){
+  ['files','code','ai','console'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('act',t===id);
+    document.getElementById(t+'-page').classList.toggle('act',t===id);
+  });
+  if(id==='ai') document.getElementById('ai-badge').classList.remove('on');
+}
+
+function toggleAIPanel(){showTab('ai');}
+
+// ── SCANNING ──
+let scanQueue=[],isScanning=false;
+function scheduleAnalysis(n){scanQueue.push(n);if(!isScanning)processQueue();}
+async function processQueue(){
+  if(!scanQueue.length){isScanning=false;setProgress(false);return;}
+  isScanning=true;
+  const name=scanQueue.shift();
+  const total=Object.keys(ST.files).length;
+  const done=total-scanQueue.length;
+  setProgress(true,`Analyzing ${name.split('/').pop()}...`,(done/total)*100);
+  await sleep(15);
+  await analyzeFile(name);
+  processQueue();
+}
+async function triggerScan(){
+  if(!Object.keys(ST.files).length){showToast('Upload files first!');return;}
+  scanQueue=[...Object.keys(ST.files)];isScanning=false;
+  showTab('console');
+  await processQueue();
+}
+async function analyzeFile(name){
+  const f=ST.files[name];if(!f)return;
+  let issues=[];
+  try{
+    if(f.lang==='js')issues=analyzeJS(f.code,name);
+    else if(f.lang==='html')issues=analyzeHTML(f.code,name);
+    else if(f.lang==='css')issues=analyzeCSS(f.code,name);
+    else if(f.lang==='python')issues=analyzePython(f.code,name);
+    else if(f.lang==='json')issues=analyzeJSON(f.code,name);
+    else issues=[{sev:'info',icon:'ℹ️',msg:`File loaded: ${name.split('/').pop()}`,file:name}];
+  }catch(e){issues=[{sev:'err',icon:'🔴',msg:`Analyzer error: ${e.message}`,file:name}];}
+  ST.files[name].issues=issues;
+  rebuildAllIssues();
+  if(name===ST.active&&!ST.editMode)renderCode(name);
+  renderFileList();renderCodeChips();
+}
+function rebuildAllIssues(){
+  ST.allIssues=[];
+  Object.values(ST.files).forEach(f=>{if(f.issues)ST.allIssues.push(...f.issues);});
+  // Use RAF to avoid blocking UI on large issue lists
+  requestAnimationFrame(()=>{
+    renderConsole();
+    updateStats();
+    updateScoreCard();
+  });
+}
+
+// ── PROGRESS ──
+let progT=null;
+function setProgress(show,label='',pct=0){
+  const el=document.getElementById('prog-wrap');
+  clearTimeout(progT);
+  if(show){el.classList.add('show');document.getElementById('prog-lbl').textContent=label;document.getElementById('prog-fill').style.width=pct+'%';}
+  else{document.getElementById('prog-fill').style.width='100%';progT=setTimeout(()=>{el.classList.remove('show');document.getElementById('prog-fill').style.width='0';},500);}
+}
+
+// ── CONSOLE ──
+const MAX_CONSOLE_ITEMS=150;
+function renderConsole(){
+  const el=document.getElementById('con-list');
+  const f=ST.filter;
+  const filt=f==='all'||f==='copy'?ST.allIssues:ST.allIssues.filter(i=>i.sev===f);
+  if(!filt.length){
+    el.innerHTML=`<div class="con-empty"><div class="ce-icon">${!ST.allIssues.length?'🔍':'✅'}</div><div style="font-size:13px;font-weight:700">${!ST.allIssues.length?'Upload & Scan':'Nothing here'}</div><div style="font-size:11px">${!ST.allIssues.length?'Real bugs — no AI needed':'No '+f+' issues found'}</div></div>`;
+    return;
+  }
+  const visible=filt.slice(0,MAX_CONSOLE_ITEMS);
+  const hasKey=ST.aiCfg.apiKey&&ST.aiCfg.modelId;
+  let html=visible.map((iss,idx)=>{
+    const bar=iss.sev==='firebase'?'firebase':iss.sev;
+    return `<div class="ci" style="animation-delay:${Math.min(idx*0.01,0.2)}s" onclick="jumpTo(${JSON.stringify(iss.file||'')},${iss.line||0})">
+      <div class="ci-bar ${bar}"></div>
+      <div class="ci-body">
+        <div class="ci-top">
+          <span class="ci-icon">${iss.icon}</span>
+          <span class="ci-msg">${iss.msg}</span>
+          <span class="ci-loc">${(iss.file||'').split('/').pop()}${iss.line?':'+iss.line:''}</span>
+        </div>
+        ${iss.detail?`<div class="ci-detail">${iss.detail}</div>`:''}
+        ${iss.fix?`<div class="ci-fix">💡 ${iss.fix}</div>`:''}
+        ${hasKey&&iss.sev!=='ok'?`<span class="ci-ai-btn" onclick="event.stopPropagation();askAIAboutIssue(${JSON.stringify(iss)})">🤖 Ask AI to Fix</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  if(filt.length>MAX_CONSOLE_ITEMS){
+    html+=`<div style="padding:12px;text-align:center;font-size:11px;color:var(--tx2)">Showing ${MAX_CONSOLE_ITEMS} of ${filt.length} issues</div>`;
+  }
+  el.innerHTML=html;
+}
+
+function setFilter(btn){
+  const f=btn.dataset.f;
+  if(f==='copy'){copyReport();return;}
+  ST.filter=f;
+  document.querySelectorAll('#con-filter-wrap .fb').forEach(b=>{b.className='fb';});
+  btn.className=`fb act-${f}`;
+  renderConsole();
+}
+
+function updateStats(){
+  const e=ST.allIssues.filter(i=>i.sev==='err').length;
+  const w=ST.allIssues.filter(i=>i.sev==='warn').length;
+  const fb=ST.allIssues.filter(i=>i.sev==='firebase').length;
+  const eEl=document.getElementById('sb-e'),wEl=document.getElementById('sb-w');
+  eEl.textContent=e+'E';eEl.style.display=e?'':'none';
+  wEl.textContent=(w+fb)+'W';wEl.style.display=(w+fb)?'':'none';
+  document.getElementById('sb-ok').style.display=(!e&&!w&&!fb&&ST.allIssues.length)?'flex':'none';
+  const total=e+w+fb;
+  const b=document.getElementById('tc-badge');b.textContent=total;b.className='tbadge'+(total>0?' on':'');
+}
+
+// ── SCORE CARD ──
+function updateScoreCard(){
+  const keys=Object.keys(ST.files);
+  const card=document.getElementById('score-card');
+  if(!keys.length){card.style.display='none';document.getElementById('sc-badge').style.display='none';return;}
+  card.style.display='block';
+  const e=ST.allIssues.filter(i=>i.sev==='err').length;
+  const w=ST.allIssues.filter(i=>i.sev==='warn').length;
+  const fb=ST.allIssues.filter(i=>i.sev==='firebase').length;
+  const inf=ST.allIssues.filter(i=>i.sev==='info').length;
+  let score=100-e*15-w*5-fb*8-inf*1;
+  score=Math.max(0,Math.min(100,score));
+  const grade=score>=95?'A+':score>=85?'A':score>=75?'B':score>=60?'C':score>=45?'D':'F';
+  const gc=grade.startsWith('A')?'#22c55e':grade==='B'?'#38bdf8':grade==='C'?'#f59e0b':grade==='D'?'#f97316':'#ef4444';
+  document.getElementById('score-letter').textContent=grade;
+  document.getElementById('score-letter').style.color=gc;
+  const sb=document.getElementById('sc-badge');
+  sb.textContent=grade;sb.style.background=gc+'22';sb.style.color=gc;sb.style.display='flex';
+  const lines=Object.values(ST.files).reduce((a,f)=>a+f.code.split('\n').length,0);
+  document.getElementById('score-grid').innerHTML=`
+    <div class="sg"><div class="sg-lbl">Score</div><div class="sg-val" style="color:${gc}">${score}%</div><div class="sg-sub">Code health</div></div>
+    <div class="sg"><div class="sg-lbl">Files</div><div class="sg-val">${keys.length}</div><div class="sg-sub">${lines} lines</div></div>
+    <div class="sg"><div class="sg-lbl">Errors</div><div class="sg-val" style="color:${e?'var(--red)':'var(--green)'}">${e}</div><div class="sg-sub">${e?'Fix these!':'None ✅'}</div></div>
+    <div class="sg"><div class="sg-lbl">Firebase</div><div class="sg-val" style="color:${fb?'var(--purple)':'var(--green)'}">${fb}</div><div class="sg-sub">${fb?'Check!':'All good ✅'}</div></div>`;
+}
+
+// ── JUMP TO LINE ──
+function jumpTo(fname,line){
+  if(!fname||!ST.files[fname])return;
+  ST.active=fname;renderCodeChips();
+  if(ST.editMode){showReadMode(fname);ST.editMode=false;document.getElementById('edit-btn').textContent='✏️ Edit';document.getElementById('edit-btn').classList.remove('edit-on');}
+  else renderCode(fname);
+  showTab('code');
+  if(line){setTimeout(()=>{const els=document.querySelectorAll('#code-view .cl');const t=els[line-1];if(t)t.scrollIntoView({behavior:'smooth',block:'center'});},200);}
+}
+
+// ── CLEAR ──
+function clearAll(){
+  ST.files={};ST.active=null;ST.allIssues=[];ST.editMode=false;
+  document.getElementById('edit-btn').textContent='✏️ Edit';
+  renderFileList();renderCodeChips();
+  document.getElementById('code-view').innerHTML='';
+  renderConsole();updateStats();updateScoreCard();
+  showToast('Cleared!');
+}
+
+// ── COPY REPORT ──
+function copyReport(){
+  if(!ST.allIssues.length){showToast('Nothing to copy');return;}
+  const txt=`NEXUS DEBUGGER REPORT\n${'='.repeat(40)}\n\n`+ST.allIssues.map(i=>`[${i.sev.toUpperCase()}] ${i.file}${i.line?':'+i.line:''}\n  ${i.msg}${i.detail?'\n  '+i.detail:''}${i.fix?'\n  Fix: '+i.fix:''}`).join('\n\n');
+  navigator.clipboard?.writeText(txt).then(()=>showToast('Report copied! ✓')).catch(()=>showToast('Copy failed'));
+}
+
+// ── AUTO-FIX ──
+const FIX_RULES=[
+  {id:'var2let',label:"'var' → 'let'",sub:'Replace var declarations',pattern:/\bvar\b/g,replace:'let',langs:['js']},
+  {id:'eq2strict',label:"'==' → '==='",sub:'Fix loose equality',pattern:/([^=!<>])={2}([^=])/g,replace:'$1===$2',langs:['js']},
+  {id:'neq2strict',label:"'!=' → '!=='",sub:'Fix loose inequality',pattern:/([^!])!=([^=])/g,replace:'$1!==$2',langs:['js']},
+  {id:'debugger',label:'Remove debugger',sub:'Delete debugger statements',pattern:/^\s*debugger\s*;?\s*\n/gm,replace:'',langs:['js']},
+  {id:'altimg',label:'Add alt="" to images',sub:'Fix img accessibility',pattern:/(<img\b(?![^>]*\balt=)[^>]*)(>|\/>)/gi,replace:'$1 alt=""$2',langs:['html']},
+  {id:'noopener',label:'Add rel="noopener"',sub:'Fix target="_blank" security',pattern:/(target=["']_blank["'](?!\s+rel=))/gi,replace:'$1 rel="noopener noreferrer"',langs:['html']},
+];
+function openFixModal(){
+  const keys=Object.keys(ST.files);
+  if(!keys.length){showToast('Upload files first');return;}
+  const avail=FIX_RULES.filter(r=>keys.some(n=>{const f=ST.files[n];return r.langs.includes(f.lang)&&(f.code.match(r.pattern)||[]).length>0;}));
+  const list=document.getElementById('fix-list');
+  if(!avail.length){list.innerHTML='<div style="text-align:center;padding:20px;color:var(--tx2);font-size:12px">✅ Nothing to auto-fix!</div>';}
+  else{list.innerHTML=avail.map(r=>{const cnt=keys.reduce((a,n)=>{const f=ST.files[n];return r.langs.includes(f.lang)?a+(f.code.match(r.pattern)||[]).length:a;},0);return`<div class="fix-item"><div style="font-size:16px">🔧</div><div class="fix-item-info"><div class="fix-item-title">${r.label}</div><div class="fix-item-sub">${r.sub}</div></div><div class="fix-count">${cnt}x</div></div>`;}).join('');}
+  document.getElementById('fix-modal').classList.add('on');
+}
+function closeFixModal(){document.getElementById('fix-modal').classList.remove('on');}
+function applyAllFixes(){
+  let totalFiles=0;
+  Object.keys(ST.files).forEach(n=>{
+    const f=ST.files[n];
+    let changed=false;
+    FIX_RULES.forEach(r=>{
+      if(!r.langs.includes(f.lang))return;
+      // Reset lastIndex for global regexes
+      const pat=new RegExp(r.pattern.source, r.pattern.flags);
+      const before=f.code;
+      f.code=f.code.replace(pat,r.replace);
+      if(f.code!==before)changed=true;
+    });
+    if(changed)totalFiles++;
+  });
+  closeFixModal();
+  if(totalFiles>0){
+    showToast(`✅ Fixed ${totalFiles} file${totalFiles>1?'s':''}!`);
+    // Re-analyze all fixed files
+    Object.keys(ST.files).forEach(n=>scheduleAnalysis(n));
+    // Update editor if in edit mode
+    if(ST.active&&ST.editMode){
+      document.getElementById('code-textarea').value=ST.files[ST.active].code;
+      updateLineNums(ST.files[ST.active].code);
+    }
+    // Update code view immediately
+    if(ST.active&&!ST.editMode) renderCode(ST.active);
+  } else {
+    showToast('Nothing to fix — code already clean!');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  AI INTEGRATION
+// ════════════════════════════════════════════════════
+
+const PROVIDER_URLS={
+  gemini:'https://generativelanguage.googleapis.com',
+  openrouter:'https://openrouter.ai/api/v1',
+  groq:'https://api.groq.com/openai/v1',
+  openai:'https://api.openai.com/v1',
+};
+const MODEL_HINTS={
+  gemini:'gemini-2.0-flash-exp (free) | gemini-2.5-pro',
+  openrouter:'deepseek/deepseek-r1:free | meta-llama/llama-3.3-70b:free',
+  groq:'llama-3.3-70b-versatile | mixtral-8x7b-32768',
+  openai:'gpt-4o-mini | gpt-4o',
+  other:'Enter your model ID',
+};
+
+function openAISettings(){
+  document.getElementById('ai-settings-modal').classList.add('on');
+  document.getElementById('cfg-api-key').value=ST.aiCfg.apiKey||'';
+  document.getElementById('cfg-model-id').value=ST.aiCfg.modelId||'';
+  document.getElementById('cfg-base-url').value=ST.aiCfg.baseUrl||'';
+  document.querySelectorAll('.prov-chip').forEach(c=>{c.classList.toggle('act',c.dataset.provider===ST.aiCfg.provider);});
+  document.getElementById('model-hint').textContent=MODEL_HINTS[ST.aiCfg.provider]||'';
+  document.getElementById('custom-base-url-wrap').style.display=ST.aiCfg.provider==='other'?'block':'none';
+}
+function closeAISettings(){document.getElementById('ai-settings-modal').classList.remove('on');}
+function selectProvider(el,p){
+  document.querySelectorAll('.prov-chip').forEach(c=>c.classList.remove('act'));
+  el.classList.add('act');ST.aiCfg.provider=p;
+  document.getElementById('model-hint').textContent=MODEL_HINTS[p]||'';
+  document.getElementById('custom-base-url-wrap').style.display=p==='other'?'block':'none';
+}
+function saveAISettings(){
+  const key=document.getElementById('cfg-api-key').value.trim();
+  const model=document.getElementById('cfg-model-id').value.trim();
+  const base=document.getElementById('cfg-base-url').value.trim();
+  if(!key){showToast('Enter API key!');return;}
+  if(!model){showToast('Enter model ID!');return;}
+  ST.aiCfg.apiKey=key;ST.aiCfg.modelId=model;
+  if(base)ST.aiCfg.baseUrl=base;
+  try{localStorage.setItem('nxd_cfg',JSON.stringify({provider:ST.aiCfg.provider,apiKey:key,modelId:model,baseUrl:base}));}catch(e){}
+  closeAISettings();showToast('AI configured! ✓');
+  document.getElementById('ai-badge').classList.add('on');
+  updateAIKeyWarning();
+}
+function updateAIKeyWarning(){
+  document.getElementById('ai-no-key-warn').style.display=ST.aiCfg.apiKey?'none':'block';
+}
+
+// Build AI context from loaded files + issues
+function buildAIContext(){
+  const keys=Object.keys(ST.files);
+  if(!keys.length)return'No files loaded yet.';
+  let ctx='=== LOADED FILES ===\n';
+  keys.forEach(name=>{
+    const f=ST.files[name];
+    ctx+=`\n--- FILE: ${name} (${f.lang}) ---\n`;
+    ctx+=f.code.slice(0,4000)+(f.code.length>4000?'\n... (truncated)':'');
+    ctx+='\n';
+  });
+  ctx+='\n=== DETECTED ISSUES ===\n';
+  const critical=ST.allIssues.filter(i=>i.sev==='err'||i.sev==='warn'||i.sev==='firebase');
+  if(critical.length){
+    critical.slice(0,30).forEach(i=>{
+      ctx+=`[${i.sev.toUpperCase()}] ${i.file}${i.line?':'+i.line:''} — ${i.msg}`;
+      if(i.detail)ctx+=` | ${i.detail}`;
+      if(i.fix)ctx+=` | Fix: ${i.fix}`;
+      ctx+='\n';
+    });
+  }else{ctx+='No critical issues detected.\n';}
+  return ctx;
+}
+
+const AI_SYSTEM=`You are Nexus Debugger AI — a precise code debugging assistant embedded in a code editor.
+
+CRITICAL RULES:
+1. When asked to FIX bugs: NEVER rewrite the whole file. ONLY edit the broken section.
+2. For fixes, use this EXACT format:
+   [FIX:filename:line_start-line_end]
+   ...corrected code for those lines only...
+   [/FIX]
+   Then briefly explain what you fixed (1-2 sentences max).
+3. When asked to DEBUG: scan the code 3 times — first for syntax/logic, second for security, third for runtime bugs. List ALL bugs found with line numbers.
+4. For manual fix help: provide the corrected code block and say exactly which lines to replace (e.g. "Replace lines 8-15 with this:").
+5. Give REAL, SPECIFIC answers — no vague advice. Always include line numbers.
+6. When suggesting fixes, be surgical — change the minimum necessary code.
+7. Use emojis appropriately. Be concise.`;
+
+async function sendAIMessage(){
+  const input=document.getElementById('ai-input');
+  const msg=input.value.trim();
+  if(!msg||ST.aiThinking)return;
+  if(!ST.aiCfg.apiKey){showToast('Set API key in ⚙️ settings');openAISettings();return;}
+  input.value='';input.style.height='36px';
+  addAIMessage('user',msg);
+  await callAI(msg);
+}
+
+function quickAsk(msg){
+  if(!ST.aiCfg.apiKey){showToast('Set API key in ⚙️ settings');openAISettings();return;}
+  document.getElementById('ai-input').value=msg;
+  sendAIMessage();
+  showTab('ai');
+}
+
+function askAIAboutIssue(issue){
+  const msg=`Fix this issue in ${issue.file}${issue.line?':'+issue.line:''}: ${issue.msg}. ${issue.detail||''}`;
+  quickAsk(msg);
+}
+
+function addAIMessage(role,content){
+  const area=document.getElementById('ai-chat-area');
+  const div=document.createElement('div');
+  div.className=`ai-msg ${role}`;
+  if(role==='user'){
+    div.innerHTML=`<div class="ai-bubble">${escHtml(content)}</div>`;
+  }else{
+    div.innerHTML=`<div class="ai-bubble">${renderAIResponse(content)}</div>`;
+  }
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  ST.aiHistory.push({role,content});
+}
+
+function showAIThinking(){
+  const area=document.getElementById('ai-chat-area');
+  const div=document.createElement('div');
+  div.className='ai-msg ai';div.id='ai-thinking-el';
+  div.innerHTML=`<div class="ai-thinking"><div class="ai-thinking-dots"><span></span><span></span><span></span></div><div style="font-size:12px;color:var(--tx2)">Analyzing code...</div></div>`;
+  area.appendChild(div);area.scrollTop=area.scrollHeight;
+  document.getElementById('ai-send').disabled=true;
+  ST.aiThinking=true;
+}
+
+function removeAIThinking(){
+  const el=document.getElementById('ai-thinking-el');
+  if(el)el.remove();
+  document.getElementById('ai-send').disabled=false;
+  ST.aiThinking=false;
+}
+
+function renderAIResponse(text){
+  const blocks={};
+  let html=text;
+  let bIdx=0;
+  function protect(s){const k='\x00B'+bIdx+++'\x00';blocks[k]=s;return k;}
+
+  // Step 1: FIX blocks → protected HTML
+  html=html.replace(/\[FIX:([^:]+):(\d+)-(\d+)\]([\s\S]*?)\[\/FIX\]/g,(match,file,start,end,code)=>{
+    const id='fix_'+Math.random().toString(36).slice(2,7);
+    window._fixes=window._fixes||{};
+    window._fixes[id]={file:file.trim(),start:parseInt(start),end:parseInt(end),code:code.trim()};
+    const btn=`onclick="applyAIFix('${id}')"`;
+    return protect(`<div class="fix-suggestion"><div class="fix-lbl">📍 Fix: ${file.trim()} lines ${start}-${end}</div><pre>${escHtml(code.trim())}</pre><button class="apply-fix-btn" ${btn}>⚡ Apply This Fix</button></div>`);
+  });
+
+  // Step 2: Code blocks → protected HTML
+  html=html.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,lang,code)=>protect(`<pre><code>${escHtml(code.trim())}</code></pre>`));
+
+  // Step 3: Newlines only in plain text now
+  html=html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  html=html.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+
+  // Step 4: Restore protected HTML
+  Object.keys(blocks).forEach(k=>{html=html.split(k).join(blocks[k]);});
+
+  return `<p>${html}</p>`;
+}
+function applyAIFix(id){
+  const fix=window._fixes?.[id];
+  if(!fix){showToast('Fix data not found');return;}
+
+  // Smart file matching - try multiple strategies
+  const fname=fix.file.trim();
+  let fileKey=null;
+
+  // Exact match
+  if(ST.files[fname]) fileKey=fname;
+  // Ends with filename
+  if(!fileKey) fileKey=Object.keys(ST.files).find(k=>k.endsWith('/'+fname)||k.endsWith('\\'+fname));
+  // Contains filename
+  if(!fileKey) fileKey=Object.keys(ST.files).find(k=>k.includes(fname)||fname.includes(k.split('/').pop()));
+  // Active file fallback
+  if(!fileKey&&ST.active) fileKey=ST.active;
+
+  if(!fileKey){showToast(`File not found: ${fname}`);return;}
+
+  const f=ST.files[fileKey];
+  const lines=f.code.split('\n');
+  const newLines=fix.code.split('\n');
+
+  // Validate line range
+  const start=Math.max(1,fix.start);
+  const end=Math.min(lines.length,fix.end);
+  const deleteCount=end-start+1;
+
+  // Apply surgical edit
+  lines.splice(start-1, deleteCount, ...newLines);
+  f.code=lines.join('\n');
+
+  // Immediately update UI
+  if(ST.active===fileKey){
+    if(ST.editMode){
+      // Update textarea
+      const ta=document.getElementById('code-textarea');
+      ta.value=f.code;
+      updateLineNums(f.code);
+      // Scroll to fixed line
+      const lineH=parseInt(getComputedStyle(ta).lineHeight)||18;
+      ta.scrollTop=(start-3)*lineH;
+    } else {
+      // Update read view immediately
+      renderCode(fileKey);
+      // Scroll to fixed line after render
+      setTimeout(()=>{
+        const lineEls=document.querySelectorAll('#code-view .cl');
+        const target=lineEls[start-1];
+        if(target)target.scrollIntoView({behavior:'smooth',block:'center'});
+      },100);
+    }
+  }
+
+  // Re-analyze to update issue list
+  analyzeFile(fileKey).then(()=>{
+    renderFileList();
+    renderCodeChips();
+    updateScoreCard();
+  });
+
+  // Disable the apply button to prevent double-apply
+  const btn=document.querySelector(`[onclick="applyAIFix('${id}')"]`);
+  if(btn){btn.textContent='✅ Applied!';btn.disabled=true;btn.style.background='var(--green)';}
+
+  showToast(`✅ Fixed lines ${start}-${end} in ${fname}!`);
+}
+
+async function callAI(userMsg){
+  showAIThinking();
+  const context=buildAIContext();
+  const fullMsg=`${context}\n\nUser request: ${userMsg}`;
+  try{
+    let response='';
+    if(ST.aiCfg.provider==='gemini'){
+      response=await callGemini(fullMsg);
+    }else{
+      response=await callOpenAICompat(fullMsg);
+    }
+    removeAIThinking();
+    addAIMessage('ai',response);
+    // Check if response has fixes and offer to apply
+    if(response.includes('[FIX:')){
+      showToast('AI fix ready — tap "Apply This Fix" button! ✓');
+    }
+  }catch(e){
+    removeAIThinking();
+    addAIMessage('ai',`⚠️ Error: ${e.message}\n\nCheck your API key and model ID in ⚙️ settings.`);
+  }
+}
+
+async function callGemini(msg){
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${ST.aiCfg.modelId}:generateContent?key=${ST.aiCfg.apiKey}`;
+  const body={
+    systemInstruction:{parts:[{text:AI_SYSTEM}]},
+    contents:[...ST.aiHistory.slice(-6).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.content}]})),{role:'user',parts:[{text:msg}]}],
+    generationConfig:{temperature:0.3,maxOutputTokens:4096}
+  };
+  const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await res.json();
+  if(!res.ok)throw new Error(d.error?.message||`HTTP ${res.status}`);
+  return d.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text).join('')||'Empty response';
+}
+
+async function callOpenAICompat(msg){
+  const base=ST.aiCfg.baseUrl||PROVIDER_URLS[ST.aiCfg.provider]||'https://api.openai.com/v1';
+  const msgs=[
+    {role:'system',content:AI_SYSTEM},
+    ...ST.aiHistory.slice(-6).map(m=>({role:m.role,content:m.content})),
+    {role:'user',content:msg}
+  ];
+  const body={model:ST.aiCfg.modelId,messages:msgs,temperature:0.3,max_tokens:4096,stream:false};
+  const res=await fetch(`${base}/chat/completions`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${ST.aiCfg.apiKey}`},body:JSON.stringify(body)});
+  const d=await res.json();
+  if(!res.ok)throw new Error(d.error?.message||`HTTP ${res.status}`);
+  return d.choices?.[0]?.message?.content||'Empty response';
+}
+
+function aiInputKeydown(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAIMessage();}
+}
+
+// AI suggest on code page
+function showAISuggest(title,content){
+  document.getElementById('as-title').textContent=title;
+  document.getElementById('as-body').innerHTML=content;
+  document.getElementById('ai-suggest').classList.add('show');
+}
+function closeAISuggest(){document.getElementById('ai-suggest').classList.remove('show');}
+
+// ── AI SETTINGS ──
+function updateAIKeyWarning(){
+  document.getElementById('ai-no-key-warn').style.display=ST.aiCfg.apiKey?'none':'block';
+  document.getElementById('ai-toggle-btn').classList.toggle('ai-on',!!ST.aiCfg.apiKey);
+}
+updateAIKeyWarning();
+
+// ── UTILS ──
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let toastT=null;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(toastT);toastT=setTimeout(()=>t.style.opacity='0',2400);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ════════════════════════════════════════════════════
+//  ANALYZERS
+// ════════════════════════════════════════════════════
+
+function analyzeJS(code,fname){
+  const issues=[];
+  const lines=code.split('\n');
+  let ast=null;
+  try{
+    ast=acorn.parse(code,{ecmaVersion:2022,sourceType:'module',locations:true});
+    issues.push({sev:'ok',icon:'✅',msg:'No syntax errors',file:fname});
+  }catch(e){
+    issues.push({sev:'err',icon:'🔴',msg:`Syntax Error: ${e.message.split(' (')[0]}`,detail:'Code cannot run',fix:`Check line ${e.loc?.line} — missing bracket/quote/semicolon?`,line:e.loc?.line,file:fname});
+  }
+  lines.forEach((line,i)=>{
+    const ln=i+1,t=line.trim();
+    if(!t||t.startsWith('//')||t.startsWith('*'))return;
+    if(/[^=!<>]==[^=]/.test(t)&&!/https?:/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'Loose == comparison',detail:'"0"==false is true! Type coercion bug',fix:'Use ===',line:ln,file:fname});
+    if(/[^!]!=[^=]/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'Loose != comparison',fix:'Use !==',line:ln,file:fname});
+    if(/if\s*\([^=!<>()]*=[^=>]/.test(t))issues.push({sev:'err',icon:'🔴',msg:'LOGIC BUG: Assignment inside if()!',detail:'if(x=5) assigns, does not compare!',fix:'Use === for comparison',line:ln,file:fname});
+    if(/\beval\s*\(/.test(t))issues.push({sev:'err',icon:'🔴',msg:'SECURITY: eval() found',detail:'Executes arbitrary code — serious risk',fix:'Remove eval()',line:ln,file:fname});
+    if(/innerHTML\s*=/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'SECURITY: innerHTML — XSS risk',fix:'Use textContent or DOMPurify',line:ln,file:fname});
+    if(/(apikey|api_key|secret|password)\s*=\s*["'][a-zA-Z0-9]{10,}/i.test(t)&&!/process\.env/.test(t))issues.push({sev:'err',icon:'🔴',msg:'SECURITY: Credential exposed in code!',fix:'Use environment variables',line:ln,file:fname});
+    if(/=\s*(fetch|getDocs|getDoc|addDoc|updateDoc|deleteDoc)\s*\(/.test(t)&&!/await/.test(t)&&!/.then/.test(t))issues.push({sev:'err',icon:'🔴',msg:'Missing await on async call!',detail:'Without await you get a Promise, not data',fix:'Add await before the call',line:ln,file:fname});
+    if(/^\s*var\s+/.test(line))issues.push({sev:'warn',icon:'⚠️',msg:"'var' — use let/const",fix:'Replace with const or let',line:ln,file:fname});
+    if(/console\.(log|warn|error)\(/.test(t))issues.push({sev:'info',icon:'🔵',msg:'Debug console call',fix:'Remove before production',line:ln,file:fname});
+    if(/^\s*debugger\s*;?\s*$/.test(line))issues.push({sev:'err',icon:'🔴',msg:'debugger statement!',fix:'Delete this line',line:ln,file:fname});
+    if(/catch\s*\(\s*\w*\s*\)\s*\{\s*\}/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'Empty catch block',fix:'Add console.error(e) inside',line:ln,file:fname});
+    if(/while\s*\(\s*(true|1)\s*\)/.test(t)){const blk=lines.slice(i,Math.min(i+20,lines.length)).join('\n');if(!/\bbreak\b/.test(blk))issues.push({sev:'err',icon:'🔴',msg:'Potential infinite loop!',fix:'Add a break condition',line:ln,file:fname});}
+    if(/\/\/\s*(TODO|FIXME)/i.test(t))issues.push({sev:'info',icon:'📝',msg:`Incomplete: ${t.match(/(TODO|FIXME)/i)[0]}`,detail:t.slice(0,60),line:ln,file:fname});
+    if(/document\.write\s*\(/.test(t))issues.push({sev:'err',icon:'🔴',msg:'document.write() is dangerous',fix:'Use DOM methods instead',line:ln,file:fname});
+    if(/null\.\w+/.test(t)||/undefined\.\w+/.test(t))issues.push({sev:'err',icon:'🔴',msg:'Accessing property of null/undefined',detail:'Will throw TypeError at runtime',fix:'Add null check before accessing',line:ln,file:fname});
+  });
+  // Firebase checks in JS
+  if(/firebase|firestore|initializeApp/.test(code))issues.push(...analyzeFirebase(code,fname));
+  return issues;
+}
+
+function analyzeFirebase(code,fname){
+  const issues=[];
+  const lines=code.split('\n');
+  lines.forEach((line,i)=>{
+    const ln=i+1,t=line.trim();
+    if(!t||t.startsWith('//'))return;
+    if(/apiKey\s*:\s*["']AIza/.test(t))issues.push({sev:'firebase',icon:'🟣',msg:'Firebase API Key in code',detail:'Visible to anyone reading source',fix:'Restrict in Firebase Console',line:ln,file:fname});
+    const fbCalls=['getDocs','getDoc','addDoc','setDoc','updateDoc','deleteDoc','signIn','createUser'];
+    fbCalls.forEach(c=>{if(new RegExp(`=\\s*${c}\\s*\\(`).test(t)&&!/await/.test(t)&&!/.then/.test(t))issues.push({sev:'firebase',icon:'🟣',msg:`Missing await on ${c}()`,detail:'Without await you get a Promise not data',fix:`Add await before ${c}(...)`,line:ln,file:fname});});
+    if(/auth\.currentUser\.\w+/.test(t)&&!/&&/.test(lines.slice(Math.max(0,i-2),i+1).join('\n')))issues.push({sev:'firebase',icon:'🟣',msg:'auth.currentUser without null check',detail:'currentUser is null if user not logged in',fix:'if(auth.currentUser){...}',line:ln,file:fname});
+    if(/allow\s+(read|write)\s*:\s*if\s+true/.test(t))issues.push({sev:'firebase',icon:'🟣',msg:'DANGER: Open Firestore rules!',detail:'Anyone can read/write your database!',fix:'if request.auth != null',line:ln,file:fname});
+    if(/\.onSnapshot\s*\(/.test(t)){const blk=lines.slice(i,Math.min(i+8,lines.length)).join('\n');if((blk.match(/=>/g)||[]).length<2)issues.push({sev:'firebase',icon:'🟣',msg:'onSnapshot missing error handler',fix:'Add 2nd callback for errors',line:ln,file:fname});}
+    if(/(getDocs|getDoc)\s*\(/.test(t)&&!/await/.test(t)&&!/.then/.test(t)){const nb=lines.slice(i+1,Math.min(i+5,lines.length)).join('\n');if(!/.docs/.test(nb)&&/.forEach|.map/.test(nb))issues.push({sev:'firebase',icon:'🟣',msg:'Missing .docs on getDocs result',detail:'Use querySnapshot.docs.forEach()',fix:'Add .docs before .forEach() or .map()',line:ln,file:fname});}
+  });
+  return issues;
+}
+
+function analyzeHTML(code,fname){
+  const issues=[];
+  const lines=code.split('\n');
+  if(!/viewport/.test(code))issues.push({sev:'warn',icon:'⚠️',msg:'Missing viewport meta',fix:'Add <meta name="viewport" content="width=device-width, initial-scale=1.0">',file:fname});
+  if(!/<title>/.test(code))issues.push({sev:'warn',icon:'⚠️',msg:'Missing <title>',fix:'Add <title>Page Title</title>',file:fname});
+  if(!/<meta\s[^>]*charset/.test(code))issues.push({sev:'warn',icon:'⚠️',msg:'Missing charset meta',fix:'Add <meta charset="UTF-8">',file:fname});
+  if(/firebase|firestore/.test(code))issues.push(...analyzeFirebase(code,fname));
+  lines.forEach((line,i)=>{
+    const ln=i+1,t=line.trim().toLowerCase();
+    if(!t)return;
+    if(/<img\b/.test(t)&&!/alt\s*=/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'<img> missing alt',fix:'Add alt="description"',line:ln,file:fname});
+    if(/target\s*=\s*["']_blank/.test(t)&&!/rel\s*=/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'target="_blank" without rel="noopener"',fix:'Add rel="noopener noreferrer"',line:ln,file:fname});
+    ['<font ','<center>','<marquee','<blink'].forEach(tag=>{if(t.includes(tag))issues.push({sev:'warn',icon:'⚠️',msg:`Deprecated: ${tag.trim()}>`,fix:'Use CSS instead',line:ln,file:fname});});
+    if(/<a\b/.test(t)&&!/href\s*=/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'<a> missing href',line:ln,file:fname});
+  });
+  if(!issues.find(i=>i.sev==='err'))issues.push({sev:'ok',icon:'✅',msg:'No critical HTML errors',file:fname});
+  return issues;
+}
+
+function analyzeCSS(code,fname){
+  const issues=[];
+  const lines=code.split('\n');
+  const seen={};
+  lines.forEach((line,i)=>{
+    const ln=i+1,t=line.trim();
+    if(!t||t.startsWith('/*')||t.startsWith('*'))return;
+    const pm=t.match(/^([\w-]+)\s*:/);
+    if(pm){if(seen[pm[1]])issues.push({sev:'warn',icon:'⚠️',msg:`Duplicate: ${pm[1]}`,detail:`Also at line ${seen[pm[1]]}`,fix:'Remove duplicate',line:ln,file:fname});seen[pm[1]]=ln;}
+    if(/!important/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'!important used',fix:'Increase specificity instead',line:ln,file:fname});
+    if(/^\*\s*\{/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'Universal selector (*) slow',fix:'Target specific elements',line:ln,file:fname});
+    if(/float\s*:\s*(left|right)/.test(t))issues.push({sev:'info',icon:'🔵',msg:'float layout — use Flexbox/Grid',line:ln,file:fname});
+    if(/:\s*[1-9]\d*\s*;/.test(t)&&!/z-index|opacity|order|flex|font-weight|line-height/.test(t.split(':')[0]))issues.push({sev:'warn',icon:'⚠️',msg:'Value missing unit',fix:'Add px, rem, %, etc.',line:ln,file:fname});
+  });
+  if(!issues.find(i=>i.sev==='err'))issues.push({sev:'ok',icon:'✅',msg:'No critical CSS errors',file:fname});
+  return issues;
+}
+
+function analyzePython(code,fname){
+  const issues=[];
+  const lines=code.split('\n');
+  lines.forEach((line,i)=>{
+    const ln=i+1,t=line.trim();
+    if(!t)return;
+    if(/^print\s+[^(]/.test(t))issues.push({sev:'err',icon:'🔴',msg:'Python 2 print statement',fix:'Use print("...")',line:ln,file:fname});
+    if(/^except\s*:/.test(t))issues.push({sev:'warn',icon:'⚠️',msg:'Bare except: clause',fix:'Use except Exception as e:',line:ln,file:fname});
+    if(/\beval\s*\(/.test(t))issues.push({sev:'err',icon:'🔴',msg:'SECURITY: eval()',fix:'Remove eval()',line:ln,file:fname});
+    if(/def\s+\w+\s*\([^)]*=\s*[\[\{]/.test(t))issues.push({sev:'err',icon:'🔴',msg:'Mutable default arg!',detail:'def f(x=[]) — shared across calls!',fix:'Use x=None then x=x or []',line:ln,file:fname});
+    if(/==\s*True\b/.test(t))issues.push({sev:'info',icon:'🔵',msg:'Use truthiness: if x:',line:ln,file:fname});
+    if(/#\s*(TODO|FIXME)/i.test(t))issues.push({sev:'info',icon:'📝',msg:`Incomplete: ${t.match(/(TODO|FIXME)/i)[0]}`,line:ln,file:fname});
+  });
+  if(!issues.find(i=>i.sev==='err'))issues.push({sev:'ok',icon:'✅',msg:'No critical Python errors',file:fname});
+  return issues;
+}
+
+function analyzeJSON(code,fname){
+  const issues=[];
+  try{
+    const p=JSON.parse(code);
+    issues.push({sev:'ok',icon:'✅',msg:'Valid JSON',file:fname});
+    if(typeof p==='object'&&p?.rules){const rs=JSON.stringify(p.rules);if(/":true"/.test(rs))issues.push({sev:'firebase',icon:'🟣',msg:'DANGER: Open Firebase DB rules!',fix:'Add auth check',file:fname});}
+    if(typeof p==='object'&&p?.apiKey&&/^AIza/.test(p.apiKey))issues.push({sev:'firebase',icon:'🟣',msg:'Firebase config in JSON',detail:'Exposed if file is public',fix:'Restrict key in Firebase Console',file:fname});
+    if(/\/\//.test(code))issues.push({sev:'err',icon:'🔴',msg:'Comments in JSON',fix:'Remove // comments',file:fname});
+    if(/,\s*[}\]]/.test(code))issues.push({sev:'err',icon:'🔴',msg:'Trailing comma in JSON',fix:'Remove comma before } or ]',file:fname});
+  }catch(e){
+    const lm=e.message.match(/line (\d+)/);
+    issues.push({sev:'err',icon:'🔴',msg:`Invalid JSON: ${e.message.slice(0,70)}`,fix:'Check commas and quotes',line:lm?parseInt(lm[1]):null,file:fname});
+  }
+  return issues;
+}
+</script>
+</body>
+</html>
