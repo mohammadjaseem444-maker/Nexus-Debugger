@@ -8,12 +8,28 @@
 No installation. No backend. No data sent anywhere. Just open and debug.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![HTML](https://img.shields.io/badge/Built%20with-HTML%2FCSS%2FJS-orange?style=flat-square)](index.html)
+[![Built with](https://img.shields.io/badge/Built%20with-HTML%2FCSS%2FJS-orange?style=flat-square)](index.html)
 [![Single File](https://img.shields.io/badge/Single%20File-75KB-blue?style=flat-square)](index.html)
 [![No Backend](https://img.shields.io/badge/Backend-None-brightgreen?style=flat-square)]()
 [![Open Source](https://img.shields.io/badge/Open-Source-purple?style=flat-square)]()
 
 ### [→ Try it Live](https://mohammadjaseem444-maker.github.io/Nexus-Debugger/) · [Report Bug](../../issues) · [Request Feature](../../issues)
+
+</div>
+
+---
+
+## 📱 Screenshots
+
+<div align="center">
+
+| 📊 Health Score | 🤖 AI Assistant |
+|:-:|:-:|
+| ![Files & Health Score](screenshots/files.jpg) | ![AI Assistant](screenshots/ai.jpg) |
+
+| 🐛 Issues Console | 💻 Code Viewer |
+|:-:|:-:|
+| ![Issues](screenshots/issues.jpg) | ![Code](screenshots/code.jpg) |
 
 </div>
 
@@ -64,16 +80,10 @@ Built for students, indie developers, and anyone who needs a fast, offline-capab
 
 ---
 
-## 📱 Screenshots
-
-> *(Screenshots coming soon)*
-
----
-
 ## 🛠️ Usage
 
 ### Option 1 — Use Online *(Recommended)*
-Open the live link: **[mohammadjaseem444-maker.github.io/Nexus-Debugger](https://mohammadjaseem444-maker.github.io/Nexus-Debugger/)**
+Open: **[mohammadjaseem444-maker.github.io/Nexus-Debugger](https://mohammadjaseem444-maker.github.io/Nexus-Debugger/)**
 
 ### Option 2 — Use Offline
 1. Download `index.html`
@@ -120,9 +130,14 @@ Open the live link: **[mohammadjaseem444-maker.github.io/Nexus-Debugger](https:/
 
 ```
 Nexus-Debugger/
-├── index.html    # The entire app — single file!
+├── index.html        # The entire app — single file!
 ├── README.md
-└── LICENSE
+├── LICENSE
+└── screenshots/
+    ├── files.jpg     # Files & Health Score
+    ├── ai.jpg        # AI Assistant
+    ├── issues.jpg    # Issues Console
+    └── code.jpg      # Code Viewer
 ```
 
 ---
